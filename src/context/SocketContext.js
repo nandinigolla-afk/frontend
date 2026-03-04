@@ -25,7 +25,10 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  const URL = 'https://mpas-backend.onrender.com';
+
+
     const s = io(URL, { transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
     setSocket(s);
 
