@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useResponsive } from '../hooks/useResponsive';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-
+const BACKEND_URL = "https://mpas-backend.onrender.com";
 export default function Sightings() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -98,7 +98,7 @@ export default function Sightings() {
                       </div>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'58%',paddingTop:18}}>
                         {mp.photo ? (
-                          <img src={'http://localhost:5000'+mp.photo} alt={mp.name} style={{width:60,height:60,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(255,255,255,0.3)'}}/>
+                          <img src={BACKEND_URL + mp.photo} alt={mp.name} style={{width:60,height:60,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(255,255,255,0.3)'}}/>
                         ) : (
                           <div style={{fontSize:'2.4rem'}}>{mp.gender==='female'?'👩':'👦'}</div>
                         )}

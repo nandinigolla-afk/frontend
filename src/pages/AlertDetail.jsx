@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import api from '../utils/api';
-
+const BACKEND_URL = "https://mpas-backend.onrender.com";
 const PIN = L.divIcon({
   html:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38"><path d="M14 1C7.37 1 2 6.37 2 13c0 9 12 25 12 25S26 22 26 13C26 6.37 20.63 1 14 1Z" fill="#0D3B4C" stroke="white" stroke-width="1.5"/><circle cx="14" cy="13" r="4.5" fill="white"/><circle cx="14" cy="13" r="2.5" fill="#E39A2D"/></svg>',
   className:'', iconSize:[28,38], iconAnchor:[14,38], popupAnchor:[0,-36]
@@ -181,7 +181,7 @@ export default function AlertDetail() {
             {/* Photo */}
             <div className="card" style={{ overflow:'hidden' }}>
               {mp.photo ? (
-                <img src={'http://localhost:5000' + mp.photo} alt={mp.name}
+                <img src={BACKEND_URL + mp.photo} alt={mp.name}
                   style={{ width:'100%', maxHeight: isMobile ? 220 : 280, objectFit:'cover', display:'block' }}/>
               ) : (
                 <div style={{ height: isMobile ? 160 : 200, background:'linear-gradient(135deg,var(--navy),#1a3a5c)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'4rem' }}>
