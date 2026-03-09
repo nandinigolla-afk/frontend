@@ -148,7 +148,7 @@ export const SocketProvider = ({ children }) => {
     s.on('case_resolved', ({ title, message, personName }) => {
       showNotification(
         title || `✅ ${personName} Has Been Found`,
-        message || `Update: ${personName} has been safely found.Thank you for your attention`,
+        message || `Update: ${personName} has been safely found.`,
         'mpas-resolved-' + Date.now()
       );
     });
