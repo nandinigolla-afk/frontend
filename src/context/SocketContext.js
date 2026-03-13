@@ -44,6 +44,10 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function subscribeToPush(userId) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (!userId) return;
+
   try {
     // Get VAPID public key from backend
     const res = await fetch(`${API_BASE}/api/push/vapid-public-key`);
@@ -52,33 +56,41 @@ async function subscribeToPush(userId) {
     if (!publicKey) return;
 
     const reg = await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) {
-      // Already subscribed — just save to backend
-      await saveSubscription(existing, userId);
-      return;
+
+    // Get existing subscription or create new one
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly     : true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+      console.log('🔔 New Web Push subscription created');
     }
 
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly     : true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
+    // Always save to backend — ensures DB is up to date
     await saveSubscription(subscription, userId);
-    console.log('🔔 Web Push subscription created');
   } catch (e) {
     console.warn('Push subscribe failed:', e.message);
   }
 }
 
 async function saveSubscription(subscription, userId) {
-  const token = localStorage.getItem('mpas_token');
-  if (!token) return;
+  // Retry a few times in case token isn't in localStorage yet (login race condition)
+  let token = localStorage.getItem('mpas_token');
+  if (!token) {
+    await new Promise(r => setTimeout(r, 1000));
+    token = localStorage.getItem('mpas_token');
+  }
+  if (!token) { console.warn('Push: no token, skipping save'); return; }
+
   try {
-    await fetch(`${API_BASE}/api/push/subscribe`, {
+    const res = await fetch(`${API_BASE}/api/push/subscribe`, {
       method : 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body   : JSON.stringify({ subscription }),
     });
+    if (res.ok) console.log('🔔 Push subscription saved to backend');
+    else console.warn('🔔 Push subscription save failed:', res.status);
   } catch (e) {
     console.warn('Save subscription failed:', e.message);
   }
@@ -100,7 +112,20 @@ export function requestGeolocation(socket, userId) {
         const { latitude: lat, longitude: lng } = pos.coords;
         localStorage.setItem('mpas_lat', lat);
         localStorage.setItem('mpas_lng', lng);
+
+        // Send via socket (real-time)
         if (socket?.connected && userId) socket.emit('update_location', { userId, lat, lng });
+
+        // Also save directly to DB via API (persists even if socket disconnects)
+        const token = localStorage.getItem('mpas_token');
+        if (token) {
+          fetch(API_BASE + '/api/users/location', {
+            method : 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body   : JSON.stringify({ lat, lng }),
+          }).catch(() => {});
+        }
+
         resolve({ lat, lng });
       },
       (err) => reject(err),

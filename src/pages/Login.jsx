@@ -2,13 +2,26 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-function requestPermissions() {
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+function requestPermissions(userId) {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(p => {
-      localStorage.setItem('mpas_lat', p.coords.latitude);
-      localStorage.setItem('mpas_lng', p.coords.longitude);
-    }, () => {});
+      const lat = p.coords.latitude;
+      const lng = p.coords.longitude;
+      localStorage.setItem('mpas_lat', lat);
+      localStorage.setItem('mpas_lng', lng);
+      // Send location to backend via API immediately after login
+      const token = localStorage.getItem('mpas_token');
+      if (token && userId) {
+        fetch(process.env.REACT_APP_API_URL + '/api/users/location', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ lat, lng }),
+        }).catch(() => {});
+      }
+    }, () => {}, { enableHighAccuracy: true, timeout: 10000 });
   }
 }
 
@@ -30,7 +43,13 @@ export default function Login() {
     e.preventDefault(); setError(''); setLoading(true);
     try {
       const data = await login(form.email, form.password);
-      requestPermissions();
+      requestPermissions(data.user._id);
+      // Subscribe to push notifications right after login if already granted
+      if ('Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+        import('../context/SocketContext').then(({ subscribeToPush }) => {
+          subscribeToPush(data.user._id);
+        }).catch(() => {});
+      }
       navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch(err) {
       setError(err.response?.data?.message || 'Invalid email or password');
