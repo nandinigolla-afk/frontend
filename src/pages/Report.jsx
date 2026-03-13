@@ -293,6 +293,9 @@ export default function Report() {
                 <button type="button" onClick={back} className="btn btn-outline" style={{borderRadius:50}}>← Back</button>
                 <button type="button" onClick={next} className="btn btn-navy" style={{borderRadius:50}}>Continue →</button>
               </div>
+              <p style={{fontSize:12,color:'var(--text-muted)',marginTop:12,textAlign:'center'}}>
+                💡 All fields in this step are optional
+              </p>
             </div>
           )}
 
@@ -328,7 +331,7 @@ export default function Report() {
           {step===5 && (
             <div className="card" style={{padding:28}}>
               <h3 style={{fontFamily:'Poppins',color:'var(--navy)',fontSize:'1.1rem',marginBottom:20,paddingBottom:14,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:8}}>
-                <span>📸</span> Photo Upload
+                <span>📸</span> Photo Upload <span style={{fontSize:12,fontWeight:400,color:'var(--text-muted)',marginLeft:6}}>(Optional)</span>
               </h3>
               <div style={{border:'2px dashed var(--border)',borderRadius:12,padding:'40px 20px',textAlign:'center',marginBottom:20,background:'#f8fafc'}}>
                 {photo ? (

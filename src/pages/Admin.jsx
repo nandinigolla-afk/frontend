@@ -48,7 +48,7 @@ function ReportRow({ r, onAction, expanded, onToggle }) {
           <div style={{ fontWeight:600, fontSize:13 }}>{mp.name || '—'}</div>
           <div style={{ color:'var(--text-muted)', fontSize:11 }}>{mp.age} yrs • {mp.gender}</div>
         </td>
-        <td><span className={'status-badge badge-' + r.status} style={{ textTransform:'capitalize' }}>{r.status}</span></td>
+        <td><span className={'status-badge badge-' + (r.status === 'critical' ? 'active' : r.status)} style={{ textTransform:'capitalize' }}>{r.status === 'critical' ? 'active' : r.status}</span></td>
         <td style={{ color:'var(--text-muted)', fontSize:12 }}>
           {r.locationName || (r.location?.coordinates ? `${r.location.coordinates[1].toFixed(3)}, ${r.location.coordinates[0].toFixed(3)}` : '—')}
         </td>
@@ -69,6 +69,9 @@ function ReportRow({ r, onAction, expanded, onToggle }) {
             </>}
             {r.status === 'critical' && (
               <button onClick={() => onAction(r._id,'resolved')} className="btn btn-sm" style={{background:'var(--resolved)',color:'white'}}>Resolve</button>
+            )}
+            {(r.status === 'resolved' || r.status === 'rejected') && (
+              <button onClick={() => onAction(r._id,'delete')} className="btn btn-sm" style={{background:'#ef5350',color:'white'}}>🗑️ Delete</button>
             )}
           </div>
         </td>
@@ -143,10 +146,16 @@ export default function Admin() {
 
   const updateReportStatus = async (id, status) => {
     try {
-      await api.put('/reports/' + id + '/status', { status });
-      showToast('Report status updated to ' + status);
+      if (status === 'delete') {
+        if (!window.confirm('Delete this report permanently? This cannot be undone.')) return;
+        await api.delete('/reports/' + id);
+        showToast('Report deleted successfully');
+      } else {
+        await api.put('/reports/' + id + '/status', { status });
+        showToast('Report status updated to ' + status);
+      }
       loadAll();
-    } catch(e) { showToast('Failed to update', 'error'); }
+    } catch(e) { showToast(e.response?.data?.message || 'Failed', 'error'); }
   };
 
   const updateSighting = async (id, status) => {
