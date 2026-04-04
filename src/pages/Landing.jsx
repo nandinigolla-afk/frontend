@@ -61,13 +61,19 @@ export default function Landing() {
   const [alerts, setAlerts] = useState([]);
   const [mapCenter] = useState([17.386, 78.489]);
 
-  useEffect(() => {
-    if (user) { navigate(user.role === 'admin' ? '/admin' : '/dashboard'); return; }
-    api.get('/reports/stats').then(r => { if (r.data.success) setStats(r.data.stats); }).catch(()=>{});
-    api.get('/reports/public').then(r => {
-      if (r.data.success) setAlerts(r.data.reports.slice(0,8));
-    }).catch(()=>{});
-  }, [user]);
+ useEffect(() => {
+  api.get('/reports/stats')
+    .then(r => {
+      if (r.data.success) setStats(r.data.stats);
+    })
+    .catch(() => {});
+
+  api.get('/reports/public')
+    .then(r => {
+      if (r.data.success) setAlerts(r.data.reports.slice(0, 8));
+    })
+    .catch(() => {});
+}, []);
 
   const isSm = isMobile || isTablet;
 
