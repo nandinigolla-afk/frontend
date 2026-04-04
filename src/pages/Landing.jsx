@@ -150,7 +150,9 @@ export default function Landing() {
               <Link
   to="/alerts"
   style={{
-    padding: isMobile ? '13px 26px' : '14px 32px',
+    
+    padding: isMobile ? '10px 18px' : '11px 22px',
+fontSize: isMobile ? 13 : 14,
     background: 'rgba(255,255,255,0.18)',
     color: '#ffffff',
     border: '1.5px solid rgba(255,255,255,0.45)',
