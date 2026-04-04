@@ -285,7 +285,7 @@ export default function Report() {
                   <input placeholder="Describe clothing..." value={form.clothingDescription} onChange={e=>set('clothingDescription',e.target.value)}/>
                 </div>
                 <div className="form-group" style={{gridColumn:'span 2',marginBottom:0}}>
-                  <label>Additional Description</label>
+                  <label>Additional Description <span style={{fontWeight:400,color:"var(--text-muted)",fontSize:12}}>(Optional)</span></label>
                   <textarea rows={3} placeholder="Any other identifying features..." value={form.description} onChange={e=>set('description',e.target.value)} style={{resize:'vertical'}}/>
                 </div>
               </div>

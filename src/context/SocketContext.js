@@ -18,6 +18,24 @@ async function registerSW() {
   }
 }
 
+// Auto-save location to DB if permission already granted (e.g. returning user)
+async function autoSyncLocation() {
+  if (!navigator.geolocation) return;
+  const token = localStorage.getItem('mpas_token');
+  if (!token) return;
+  const lat = localStorage.getItem('mpas_lat');
+  const lng = localStorage.getItem('mpas_lng');
+  if (!lat || !lng) return;
+  // Already have location — just sync to backend
+  try {
+    await fetch((process.env.REACT_APP_API_URL || 'http://localhost:5000') + '/api/users/location', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ lat: parseFloat(lat), lng: parseFloat(lng) }),
+    });
+  } catch (e) {}
+}
+
 // ── Show notification (when tab is open) ─────────────────────────────
 async function showNotification(title, body, tag = 'mpas', url = '/') {
   // Tab blink — always works
@@ -141,8 +159,12 @@ export const SocketProvider = ({ children }) => {
   const { user } = useAuth();
   const socketRef = useRef(null);
 
-  // Register SW once on mount
-  useEffect(() => { registerSW(); }, []);
+  // Register SW once on mount + sync location if already granted
+  useEffect(() => {
+    registerSW();
+    // If user already granted location before, sync to DB on every visit
+    setTimeout(() => autoSyncLocation(), 2000);
+  }, []);
 
   // Connect socket
   useEffect(() => {

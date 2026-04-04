@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/common/Navbar';
 import { ProtectedRoute, AdminRoute } from './components/common/ProtectedRoute';
+import Landing from './pages/Landing';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -14,6 +15,7 @@ import Sightings from './pages/Sightings';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
 import About from './pages/About';
+import PermissionBanner from './components/common/PermissionBanner';
 import './styles/global.css';
 
 export default function App() {
@@ -22,8 +24,10 @@ export default function App() {
       <SocketProvider>
         <Router>
           <Navbar />
+          <PermissionBanner />
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/alerts" element={<Alerts />} />

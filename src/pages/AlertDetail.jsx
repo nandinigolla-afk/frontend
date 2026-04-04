@@ -1,28 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import api from '../utils/api';
-const BACKEND_URL = "https://mpas-backend.onrender.com";
-const PIN = L.divIcon({
-  html:'<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38"><path d="M14 1C7.37 1 2 6.37 2 13c0 9 12 25 12 25S26 22 26 13C26 6.37 20.63 1 14 1Z" fill="#0D3B4C" stroke="white" stroke-width="1.5"/><circle cx="14" cy="13" r="4.5" fill="white"/><circle cx="14" cy="13" r="2.5" fill="#E39A2D"/></svg>',
-  className:'', iconSize:[28,38], iconAnchor:[14,38], popupAnchor:[0,-36]
-});
+
+const BACKEND_URL = process.env.REACT_APP_API_URL || 'https://mpas-backend.onrender.com';
+
+function InfoBox({ label, value }) {
+  if (!value) return null;
+  return (
+    <div style={{ background:'#f1f5f9', borderRadius:10, padding:'10px 14px' }}>
+      <div style={{ fontSize:11, color:'#94a3b8', marginBottom:3, fontWeight:500 }}>{label}</div>
+      <div style={{ fontWeight:700, color:'#0D3B4C', fontSize:14, textTransform:'capitalize' }}>{value}</div>
+    </div>
+  );
+}
 
 export default function AlertDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isMobile, isTablet } = useResponsive();
-  const [report, setReport] = useState(null);
+  const { isMobile } = useResponsive();
+  const [report, setReport]   = useState(null);
   const [sightings, setSightings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sightingForm, setSightingForm] = useState({ description:'', locationName:'', sightingDate:'' });
   const [submitting, setSubmitting] = useState(false);
   const [sightingSuccess, setSightingSuccess] = useState(false);
+  const [showSightingForm, setShowSightingForm] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -38,177 +43,247 @@ export default function AlertDetail() {
   const submitSighting = async e => {
     e.preventDefault(); setSubmitting(true);
     try {
-      await api.post('/sightings/report/' + id, { ...sightingForm, location:{ type:'Point', coordinates:[0,0] } });
+      await api.post('/sightings/report/' + id, {
+        ...sightingForm,
+        location: { type:'Point', coordinates:[0,0] }
+      });
       setSightingSuccess(true);
+      setShowSightingForm(false);
     } catch(err) { console.error(err); }
     finally { setSubmitting(false); }
   };
 
-  if (loading) return <div style={{ paddingTop:'var(--header-h)', display:'flex', justifyContent:'center', padding:'80px 20px' }}><div className="spin"/></div>;
+  const shareAlert = () => {
+    if (navigator.share) {
+      navigator.share({ title:`MPAS Alert: ${report?.missingPerson?.name}`, url: window.location.href });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  if (loading) return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:'100vh' }}>
+      <div className="spin"/>
+    </div>
+  );
   if (!report) return null;
 
   const mp = report.missingPerson || {};
-  const coords = report.location?.coordinates;
-  const pos = coords && coords[0] !== 0 ? [coords[1], coords[0]] : [17.386, 78.489];
   const caseNum = '#MPR-' + new Date(report.createdAt).getFullYear() + '-' + report._id.toString().slice(-4);
   const isResolved = report.status === 'resolved';
-  const stacked = isMobile || isTablet;
+  const lastSeenFmt = mp.lastSeenDate
+    ? new Date(mp.lastSeenDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+      + ' at ' + new Date(mp.lastSeenDate).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12:true })
+    : null;
 
   return (
-    <div style={{ paddingTop:'var(--header-h)', minHeight:'100vh', background:'var(--bg-light)' }}>
-      {/* Header */}
-      <div style={{ background: isResolved ? '#16a34a' : 'var(--navy)', padding: isMobile ? '18px 0' : '24px 0' }}>
-        <div className="page-wrap">
-          <Link to="/alerts" style={{ color:'rgba(255,255,255,0.7)', fontSize:13, display:'inline-flex', alignItems:'center', gap:5, marginBottom:10 }}>
-            ← Back to Alerts
-          </Link>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
-            <div>
-              <h1 style={{ fontFamily:'Poppins', color:'white', fontSize: isMobile ? '1.5rem' : '2rem', marginBottom:4, fontWeight:800 }}>
-                {isResolved ? '✅ ' : ''}{mp.name || 'Unknown'}
-              </h1>
-              <p style={{ color:'rgba(255,255,255,0.65)', fontSize:13 }}>Case {caseNum}</p>
-            </div>
-            <span className={'badge badge-' + report.status} style={{ fontSize:12, padding:'5px 14px' }}>{report.status}</span>
-          </div>
-        </div>
+    <div style={{ paddingTop:'var(--header-h)', minHeight:'100vh', background:'#e8edf2' }}>
+      {/* Back button */}
+      <div style={{ padding:'12px 20px', background:'white', borderBottom:'1px solid #e2e8f0' }}>
+        <Link to="/alerts" style={{ color:'#0D3B4C', fontSize:13.5, fontWeight:600, display:'inline-flex', alignItems:'center', gap:6, textDecoration:'none' }}>
+          ← Back to Alerts
+        </Link>
       </div>
 
-      <div className="page-wrap" style={{ padding: isMobile ? '16px 0' : '24px 0' }}>
-        {isResolved && (
-          <div style={{ background:'#dcfce7', border:'1px solid #86efac', borderRadius:12, padding:'14px 18px', marginBottom:18, display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:'1.4rem' }}>✅</span>
-            <div>
-              <div style={{ fontWeight:700, color:'#16a34a', fontSize:14 }}>Case Resolved — Person Found</div>
-              <div style={{ color:'#15803d', fontSize:13 }}>This case has been successfully closed. Thank you to all who helped.</div>
+      <div style={{ maxWidth:680, margin:'0 auto', padding: isMobile?'16px 12px':'24px 16px' }}>
+
+        {/* ── Modal-style card ── */}
+        <div style={{ background:'white', borderRadius:20, overflow:'hidden', boxShadow:'0 8px 40px rgba(0,0,0,0.12)' }}>
+
+          {/* Header */}
+          <div style={{ padding:'24px 24px 20px', borderBottom:'1px solid #f1f5f9' }}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:16 }}>
+              {/* Avatar */}
+              <div style={{ width:70, height:70, borderRadius:16, overflow:'hidden', flexShrink:0,
+                background:'linear-gradient(135deg,#e2e8f0,#cbd5e1)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2.2rem' }}>
+                {mp.photo
+                  ? <img src={BACKEND_URL + mp.photo} alt={mp.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  : (mp.gender === 'female' ? '👩' : '👨')
+                }
+              </div>
+
+              {/* Name + status */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:4 }}>
+                  <h1 style={{ fontFamily:'Poppins', fontWeight:800, color:'#0D3B4C', fontSize: isMobile?'1.3rem':'1.6rem', margin:0 }}>
+                    {isResolved ? '✅ ' : ''}{mp.name || 'Unknown'}
+                  </h1>
+                  <span style={{
+                    padding:'3px 12px', borderRadius:50, fontSize:11.5, fontWeight:700, textTransform:'uppercase',
+                    background: isResolved?'#dcfce7': report.status==='critical'?'#fef2f2':'#fef3c7',
+                    color: isResolved?'#16a34a': report.status==='critical'?'#ef4444':'#d97706',
+                    border: `1px solid ${isResolved?'#86efac': report.status==='critical'?'#fecaca':'#fde68a'}`
+                  }}>{report.status}</span>
+                </div>
+                <div style={{ color:'#94a3b8', fontSize:12.5, marginBottom:4 }}>Case {caseNum}</div>
+                {lastSeenFmt && (
+                  <div style={{ color:'#0D3B4C', fontSize:13, fontWeight:600 }}>
+                    Last seen: {lastSeenFmt}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Main layout — stacks on mobile */}
-        <div style={{ display:'grid', gridTemplateColumns: stacked ? '1fr' : 'minmax(0,1fr) 320px', gap:20, alignItems:'start' }}>
-          {/* Left: details + sightings form */}
-          <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-            {/* Details card */}
-            <div className="card" style={{ padding: isMobile ? '18px 16px' : '24px 28px' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))', gap:10, marginBottom:18 }}>
-                {[
-                  ['Age', mp.age],
-                  ['Gender', mp.gender],
-                  ['Height', mp.height],
-                  ['Build', mp.build],
-                  ['Hair', mp.hairColor],
-                  ['Eyes', mp.eyeColor],
-                  ['Last Seen', mp.lastSeenDate && new Date(mp.lastSeenDate).toLocaleDateString('en-IN')],
-                  ['Location', report.locationName],
-                ].filter(([,v]) => v).map(([k,v]) => (
-                  <div key={k} style={{ background:'var(--bg)', borderRadius:8, padding:'10px 12px' }}>
-                    <div style={{ fontSize:10, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:3 }}>{k}</div>
-                    <div style={{ fontWeight:600, color:'var(--navy)', fontSize:13, textTransform:'capitalize' }}>{v}</div>
+          {/* Resolved banner */}
+          {isResolved && (
+            <div style={{ background:'#dcfce7', padding:'12px 24px', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:'1.2rem' }}>✅</span>
+              <div>
+                <div style={{ fontWeight:700, color:'#16a34a', fontSize:13.5 }}>Case Resolved — Person Found</div>
+                <div style={{ color:'#15803d', fontSize:12.5 }}>This case has been successfully closed. Thank you to all who helped.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Body */}
+          <div style={{ padding:'20px 24px' }}>
+
+            {/* Last Known Location */}
+            {report.locationName && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                  Last Known Location
+                </div>
+                <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize:'1.1rem' }}>📍</span>
+                  <span style={{ color:'#0D3B4C', fontWeight:600, fontSize:14 }}>{report.locationName}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Physical Description */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                Physical Description
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <InfoBox label="Age" value={mp.age ? `${mp.age} years` : null}/>
+                <InfoBox label="Gender" value={mp.gender}/>
+                <InfoBox label="Height" value={mp.height}/>
+                <InfoBox label="Weight" value={mp.weight ? `${mp.weight} lbs` : null}/>
+                <InfoBox label="Hair" value={mp.hairColor}/>
+                <InfoBox label="Eyes" value={mp.eyeColor}/>
+              </div>
+              {mp.clothingDescription && (
+                <div style={{ marginTop:10, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'12px 16px' }}>
+                  <span style={{ fontWeight:700, color:'#0D3B4C', fontSize:13.5 }}>Clothing: </span>
+                  <span style={{ color:'#475569', fontSize:13.5 }}>{mp.clothingDescription}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Circumstances / Description */}
+            {mp.description && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                  Circumstances
+                </div>
+                <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'14px 16px',
+                  color:'#475569', fontSize:14, lineHeight:1.7 }}>
+                  {mp.description}
+                </div>
+              </div>
+            )}
+
+            {/* Contact Reporter */}
+            {report.contactInfo && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                  Contact Reporter
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <InfoBox label="Name" value={report.contactInfo.name}/>
+                  <InfoBox label="Phone" value={report.contactInfo.phone}/>
+                </div>
+              </div>
+            )}
+
+            {/* Sightings */}
+            {sightings.length > 0 && (
+              <div style={{ marginBottom:20 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                  Verified Sightings ({sightings.length})
+                </div>
+                {sightings.map(s => (
+                  <div key={s._id} style={{ background:'#f8fafc', borderRadius:10, padding:'12px 14px', marginBottom:8, border:'1px solid #e2e8f0' }}>
+                    <div style={{ fontSize:12, color:'#94a3b8', marginBottom:4 }}>
+                      {new Date(s.sightingDate).toLocaleString('en-IN')}{s.locationName && ` · ${s.locationName}`}
+                    </div>
+                    <div style={{ fontSize:13.5, color:'#475569', lineHeight:1.6 }}>{s.description}</div>
                   </div>
                 ))}
               </div>
-              {mp.description && <p style={{ color:'var(--text)', lineHeight:1.75, fontSize:14, marginBottom:12 }}>{mp.description}</p>}
-              {mp.clothingDescription && (
-                <div style={{ background:'#f8fafc', borderRadius:8, padding:'10px 14px', fontSize:13, color:'var(--text-muted)' }}>
-                  👕 <b>Clothing:</b> {mp.clothingDescription}
-                </div>
+            )}
+
+            {/* Sighting success */}
+            {sightingSuccess && (
+              <div style={{ background:'#dcfce7', border:'1px solid #86efac', borderRadius:10, padding:'12px 16px', marginBottom:16, textAlign:'center', color:'#16a34a', fontWeight:600 }}>
+                ✅ Sighting submitted successfully! Thank you for helping.
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:8 }}>
+              {user && !isResolved && !sightingSuccess && (
+                <button onClick={() => setShowSightingForm(!showSightingForm)}
+                  style={{ padding:'13px', background:'#E39A2D', color:'#1a0e00', border:'none',
+                    borderRadius:12, fontWeight:700, fontSize:14.5, cursor:'pointer', fontFamily:'Poppins,sans-serif' }}>
+                  Report a Sighting
+                </button>
               )}
-              {report.contactInfo && (
-                <div style={{ marginTop:14, background:'#f8fafc', borderRadius:8, padding:'10px 14px' }}>
-                  <div style={{ fontWeight:700, fontSize:13, color:'var(--navy)', marginBottom:4 }}>📞 Contact</div>
-                  <div style={{ color:'var(--text-muted)', fontSize:13 }}>
-                    {report.contactInfo.name}{report.contactInfo.phone ? ' · ' + report.contactInfo.phone : ''}
-                  </div>
-                </div>
+              {!user && !isResolved && (
+                <Link to="/login" style={{ padding:'13px', background:'#E39A2D', color:'#1a0e00',
+                  borderRadius:12, fontWeight:700, fontSize:14.5, textDecoration:'none', textAlign:'center', fontFamily:'Poppins,sans-serif' }}>
+                  Report a Sighting
+                </Link>
               )}
+              <button onClick={shareAlert}
+                style={{ padding:'13px', background:'#0D3B4C', color:'white', border:'none',
+                  borderRadius:12, fontWeight:700, fontSize:14.5, cursor:'pointer', fontFamily:'Poppins,sans-serif',
+                  gridColumn: (isResolved || (!user && isResolved)) ? 'span 2' : 'auto' }}>
+                Share Alert
+              </button>
             </div>
 
-            {/* Sightings */}
-            <div className="card" style={{ padding: isMobile ? '18px 16px' : '24px 28px' }}>
-              <h2 style={{ fontFamily:'Poppins', color:'var(--navy)', fontSize:'1.1rem', marginBottom:16 }}>
-                👁️ Sightings ({sightings.length})
-              </h2>
-              {sightings.length === 0
-                ? <p style={{ color:'var(--text-muted)', fontSize:14 }}>No verified sightings yet. Be the first to report one.</p>
-                : sightings.map(s => (
-                  <div key={s._id} style={{ borderBottom:'1px solid var(--border)', paddingBottom:14, marginBottom:14 }}>
-                    <p style={{ fontSize:12, color:'var(--text-muted)', marginBottom:4 }}>
-                      {new Date(s.sightingDate).toLocaleString('en-IN')}{s.locationName && ' at ' + s.locationName}
-                    </p>
-                    <p style={{ fontSize:14, color:'var(--text)', lineHeight:1.65 }}>{s.description}</p>
+            {/* Sighting form */}
+            {showSightingForm && user && !isResolved && (
+              <div style={{ marginTop:20, paddingTop:20, borderTop:'2px solid #f1f5f9' }}>
+                <h3 style={{ fontFamily:'Poppins', color:'#0D3B4C', fontSize:'1rem', marginBottom:14 }}>Submit a Sighting</h3>
+                <form onSubmit={submitSighting}>
+                  <div className="form-group">
+                    <label>What did you see? *</label>
+                    <textarea rows={3} placeholder="Describe what you observed..."
+                      value={sightingForm.description}
+                      onChange={e => setSightingForm({...sightingForm, description:e.target.value})}
+                      required style={{ resize:'vertical' }}/>
                   </div>
-                ))
-              }
-
-              {user && !isResolved && !sightingSuccess && (
-                <div style={{ borderTop:'2px solid var(--border)', paddingTop:18, marginTop:18 }}>
-                  <h3 style={{ fontFamily:'Poppins', color:'var(--navy)', fontSize:'1rem', marginBottom:14 }}>Submit a Sighting</h3>
-                  <form onSubmit={submitSighting}>
+                  <div style={{ display:'grid', gridTemplateColumns: isMobile?'1fr':'1fr 1fr', gap:12 }}>
                     <div className="form-group">
-                      <label>What did you see? *</label>
-                      <textarea rows={3} placeholder="Describe what you observed..." value={sightingForm.description}
-                        onChange={e => setSightingForm({...sightingForm, description:e.target.value})} required style={{ resize:'vertical' }}/>
+                      <label>Where?</label>
+                      <input placeholder="Location/landmark" value={sightingForm.locationName}
+                        onChange={e => setSightingForm({...sightingForm, locationName:e.target.value})}/>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
-                      <div className="form-group">
-                        <label>Where?</label>
-                        <input placeholder="Location/landmark" value={sightingForm.locationName}
-                          onChange={e => setSightingForm({...sightingForm, locationName:e.target.value})}/>
-                      </div>
-                      <div className="form-group">
-                        <label>When? *</label>
-                        <input type="datetime-local" value={sightingForm.sightingDate}
-                          onChange={e => setSightingForm({...sightingForm, sightingDate:e.target.value})} required/>
-                      </div>
+                    <div className="form-group">
+                      <label>When? *</label>
+                      <input type="datetime-local" value={sightingForm.sightingDate}
+                        onChange={e => setSightingForm({...sightingForm, sightingDate:e.target.value})} required/>
                     </div>
-                    <button type="submit" className="btn btn-amber btn-full" disabled={submitting} style={{ borderRadius:50 }}>
+                  </div>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <button type="button" onClick={() => setShowSightingForm(false)}
+                      style={{ flex:1, padding:'11px', background:'#f1f5f9', color:'#64748b', border:'none', borderRadius:10, fontWeight:600, cursor:'pointer' }}>
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={submitting}
+                      style={{ flex:2, padding:'11px', background:'#0D3B4C', color:'white', border:'none', borderRadius:10, fontWeight:700, cursor:'pointer' }}>
                       {submitting ? 'Submitting...' : 'Submit Sighting →'}
                     </button>
-                  </form>
-                </div>
-              )}
-              {sightingSuccess && (
-                <div style={{ textAlign:'center', padding:'20px 0', color:'#16a34a', fontWeight:600 }}>
-                  ✅ Sighting submitted for review!
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right sidebar: photo + map */}
-          <div style={{ display:'flex', flexDirection:'column', gap:16, position: stacked ? 'static' : 'sticky', top:'calc(var(--header-h) + 16px)' }}>
-            {/* Photo */}
-            <div className="card" style={{ overflow:'hidden' }}>
-              {mp.photo ? (
-                <img src={BACKEND_URL + mp.photo} alt={mp.name}
-                  style={{ width:'100%', maxHeight: isMobile ? 220 : 280, objectFit:'cover', display:'block' }}/>
-              ) : (
-                <div style={{ height: isMobile ? 160 : 200, background:'linear-gradient(135deg,var(--navy),#1a3a5c)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'4rem' }}>
-                  {mp.gender === 'female' ? '👩' : '👨'}
-                </div>
-              )}
-              <div style={{ padding:'12px 16px' }}>
-                <div style={{ fontWeight:700, color:'var(--navy)', fontSize:15 }}>{mp.name}</div>
-                {mp.age && <div style={{ color:'var(--text-muted)', fontSize:13 }}>Age {mp.age} · {mp.gender || ''}</div>}
+                  </div>
+                </form>
               </div>
-            </div>
-
-            {/* Map */}
-            <div className="card" style={{ overflow:'hidden' }}>
-              <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontFamily:'Poppins', fontWeight:600, color:'var(--navy)', fontSize:13.5 }}>
-                📍 Last Known Location
-              </div>
-              <div style={{ height: isMobile ? 200 : 240 }}>
-                <MapContainer center={pos} zoom={14} style={{ height:'100%', width:'100%' }} zoomControl={false} scrollWheelZoom={false}>
-                  <TileLayer url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"/>
-                  <Marker position={pos} icon={PIN}/>
-                </MapContainer>
-              </div>
-              {report.locationName && (
-                <div style={{ padding:'8px 14px', fontSize:12.5, color:'var(--text-muted)' }}>{report.locationName}</div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
