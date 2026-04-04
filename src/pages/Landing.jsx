@@ -139,7 +139,8 @@ export default function Landing() {
 >
            
               <Link to="/report" style={{
-                padding: isMobile?'13px 26px':'14px 32px',
+                 padding: isMobile ? '10px 18px' : '11px 22px',
+fontSize: isMobile ? 13 : 14,
                 background:'#E39A2D', color:'#1a0e00',
                 borderRadius:50, fontWeight:700, fontSize: isMobile?14:15,
                 boxShadow:'0 6px 24px rgba(227,154,45,0.45)',
