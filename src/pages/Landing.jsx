@@ -128,7 +128,16 @@ export default function Landing() {
             </p>
 
             {/* CTA buttons */}
-            <div className="fade-in-4" style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+            <div
+  className="fade-in-4"
+  style={{
+    display: 'flex',
+    gap: 14,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
+    alignItems: 'center'
+  }}
+>
+           
               <Link to="/report" style={{
                 padding: isMobile?'13px 26px':'14px 32px',
                 background:'#E39A2D', color:'#1a0e00',
@@ -138,13 +147,26 @@ export default function Landing() {
               }}>
                 🚨 Report Missing Person
               </Link>
-              <Link to="/alerts" style={{
-                padding: isMobile?'13px 26px':'14px 32px',
-                background:'rgba(255,255,255,0.12)', color:'white',
-                border:'1.5px solid rgba(255,255,255,0.3)',
-                borderRadius:50, fontWeight:600, fontSize: isMobile?14:15,
-                textDecoration:'none', display:'inline-flex', alignItems:'center', gap:8
-              }}>
+              <Link
+  to="/alerts"
+  style={{
+    padding: isMobile ? '13px 26px' : '14px 32px',
+    background: 'rgba(255,255,255,0.18)',
+    color: '#ffffff',
+    border: '1.5px solid rgba(255,255,255,0.45)',
+    borderRadius: 50,
+    fontWeight: 700,
+    fontSize: isMobile ? 14 : 15,
+    textDecoration: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minWidth: isMobile ? '100%' : '220px',
+    backdropFilter: 'blur(8px)',
+    whiteSpace: 'nowrap'
+  }}
+>
                 👁️ View Active Cases
               </Link>
             </div>
