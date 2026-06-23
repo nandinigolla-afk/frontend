@@ -67,7 +67,7 @@ npm start
 The application will run at:
 
 ```text
-http://localhost:3000
+https://frontend-9g7q.vercel.app/
 ```
 
 Key Modules
